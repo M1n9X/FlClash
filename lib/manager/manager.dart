@@ -1,6 +1,7 @@
 export 'android_manager.dart';
 export 'app_manager.dart';
 export 'connectivity_manager.dart';
+export 'connection_manager.dart';
 export 'core_manager.dart';
 export 'message_manager.dart';
 export 'proxy_manager.dart';

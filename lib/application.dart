@@ -88,7 +88,9 @@ class ApplicationState extends ConsumerState<Application> {
             globalState.appController.updateLocalIp();
             globalState.appController.addCheckIpNumDebounce();
           },
-          child: child,
+          child: ConnectionManager(
+            child: child,
+          ),
         ),
       ),
     );

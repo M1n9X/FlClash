@@ -273,6 +273,12 @@ abstract class Group with _$Group {
     required String name,
   }) = _Group;
 
+  factory Group.empty() => Group(
+    type: GroupType.Selector,
+    all: const [],
+    name: '',
+  );
+
   factory Group.fromJson(Map<String, Object?> json) => _$GroupFromJson(json);
 }
 
