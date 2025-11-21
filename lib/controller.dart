@@ -126,6 +126,9 @@ class AppController {
   }
 
   void updateRunTime() {
+    if (!globalState.isForeground) {
+      return;
+    }
     final startTime = globalState.startTime;
     final shouldForcePublish =
         startTime != null && _ref.read(runTimeProvider) == null;
@@ -147,6 +150,9 @@ class AppController {
   }
 
   Future<void> updateTraffic() async {
+    if (!globalState.isForeground) {
+      return;
+    }
     if (!_isTrafficViewActive()) {
       _trafficSkipTick += 1;
       if (_trafficSkipTick < _trafficSlowInterval) {

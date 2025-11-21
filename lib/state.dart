@@ -49,6 +49,7 @@ class GlobalState {
   bool isInit = false;
   bool isUserDisconnected = false;
   bool isService = false;
+  bool isForeground = true;
 
   bool get isStart => startTime != null && startTime!.isBeforeNow;
 
@@ -304,7 +305,13 @@ class GlobalState {
 
   Future<void> genConfigFile(ClashConfig pathConfig) async {
     final configFilePath = await appPath.configFilePath;
-    final rawConfigResult = await patchRawConfig(patchConfig: pathConfig);
+    Map<String, dynamic> rawConfigResult = {};
+    try {
+      rawConfigResult = await patchRawConfig(patchConfig: pathConfig);
+    } catch (e) {
+      globalState.showNotifier(e.toString());
+      rethrow;
+    }
 
     final res = await Isolate.run<String>(() async {
       try {

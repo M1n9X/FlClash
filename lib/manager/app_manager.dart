@@ -71,10 +71,9 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
   @override
   Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
     commonPrint.log('$state');
+    globalState.isForeground = state == AppLifecycleState.resumed;
     if (state == AppLifecycleState.resumed) {
       render?.resume();
-    }
-    if (state == AppLifecycleState.resumed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         detectionState.tryStartCheck();
       });
