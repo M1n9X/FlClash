@@ -135,6 +135,7 @@ abstract class RuleProvider with _$RuleProvider {
 
 @freezed
 abstract class Sniffer with _$Sniffer {
+  @JsonSerializable(explicitToJson: true)
   const factory Sniffer({
     @Default(false) bool enable,
     @Default(true) @JsonKey(name: 'override-destination') bool overrideDest,
@@ -225,6 +226,7 @@ abstract class FallbackFilter with _$FallbackFilter {
 
 @freezed
 abstract class Dns with _$Dns {
+  @JsonSerializable(explicitToJson: true)
   const factory Dns({
     @Default(true) bool enable,
     @Default('0.0.0.0:1053') String listen,
@@ -411,6 +413,7 @@ List<SubRule> _genSubRules(Map<String, dynamic> json) {
 
 @freezed
 abstract class ClashConfigSnippet with _$ClashConfigSnippet {
+  @JsonSerializable(explicitToJson: true)
   const factory ClashConfigSnippet({
     @Default([]) @JsonKey(name: 'proxy-groups') List<ProxyGroup> proxyGroups,
     @JsonKey(fromJson: _genRule, name: 'rules') @Default([]) List<Rule> rule,
@@ -428,6 +431,7 @@ abstract class ClashConfigSnippet with _$ClashConfigSnippet {
 
 @freezed
 abstract class ClashConfig with _$ClashConfig {
+  @JsonSerializable(explicitToJson: true)
   const factory ClashConfig({
     @Default(defaultMixedPort) @JsonKey(name: 'mixed-port') int mixedPort,
     @Default(0) @JsonKey(name: 'socks-port') int socksPort,

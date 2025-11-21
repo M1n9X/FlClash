@@ -510,8 +510,8 @@ return $default(_that.id,_that.label,_that.currentGroupName,_that.url,_that.last
 }
 
 /// @nodoc
-@JsonSerializable()
 
+@JsonSerializable(explicitToJson: true)
 class _Profile implements Profile {
   const _Profile({required this.id, this.label, this.currentGroupName, this.url = '', this.lastUpdateDate, required this.autoUpdateDuration, this.subscriptionInfo, this.autoUpdate = true, final  SelectedMap selectedMap = const {}, final  Set<String> unfoldSet = const {}, this.overrideData = const OverrideData(), @JsonKey(includeToJson: false, includeFromJson: false) this.isUpdating = false}): _selectedMap = selectedMap,_unfoldSet = unfoldSet;
   factory _Profile.fromJson(Map<String, dynamic> json) => _$ProfileFromJson(json);
@@ -838,8 +838,8 @@ return $default(_that.enable,_that.rule);case _:
 }
 
 /// @nodoc
-@JsonSerializable()
 
+@JsonSerializable(explicitToJson: true)
 class _OverrideData implements OverrideData {
   const _OverrideData({this.enable = false, this.rule = const OverrideRule()});
   factory _OverrideData.fromJson(Map<String, dynamic> json) => _$OverrideDataFromJson(json);
@@ -1114,8 +1114,8 @@ return $default(_that.type,_that.overrideRules,_that.addedRules);case _:
 }
 
 /// @nodoc
-@JsonSerializable()
 
+@JsonSerializable(explicitToJson: true)
 class _OverrideRule implements OverrideRule {
   const _OverrideRule({this.type = OverrideRuleType.added, final  List<Rule> overrideRules = const [], final  List<Rule> addedRules = const []}): _overrideRules = overrideRules,_addedRules = addedRules;
   factory _OverrideRule.fromJson(Map<String, dynamic> json) => _$OverrideRuleFromJson(json);

@@ -111,7 +111,7 @@ Map<String, dynamic> _$SnifferToJson(_Sniffer instance) => <String, dynamic>{
   'port-whitelist': instance.port,
   'force-dns-mapping': instance.forceDnsMapping,
   'parse-pure-ip': instance.parsePureIp,
-  'sniff': instance.sniff,
+  'sniff': instance.sniff.map((k, e) => MapEntry(k, e.toJson())),
 };
 
 _SnifferConfig _$SnifferConfigFromJson(Map<String, dynamic> json) =>
@@ -253,7 +253,7 @@ Map<String, dynamic> _$DnsToJson(_Dns instance) => <String, dynamic>{
   'nameserver': instance.nameserver,
   'fallback': instance.fallback,
   'proxy-server-nameserver': instance.proxyServerNameserver,
-  'fallback-filter': instance.fallbackFilter,
+  'fallback-filter': instance.fallbackFilter.toJson(),
 };
 
 const _$DnsModeEnumMap = {
@@ -318,10 +318,10 @@ _ClashConfigSnippet _$ClashConfigSnippetFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$ClashConfigSnippetToJson(_ClashConfigSnippet instance) =>
     <String, dynamic>{
-      'proxy-groups': instance.proxyGroups,
-      'rules': instance.rule,
-      'rule-providers': instance.ruleProvider,
-      'sub-rules': instance.subRules,
+      'proxy-groups': instance.proxyGroups.map((e) => e.toJson()).toList(),
+      'rules': instance.rule.map((e) => e.toJson()).toList(),
+      'rule-providers': instance.ruleProvider.map((e) => e.toJson()).toList(),
+      'sub-rules': instance.subRules.map((e) => e.toJson()).toList(),
     };
 
 _ClashConfig _$ClashConfigFromJson(Map<String, dynamic> json) => _ClashConfig(
@@ -397,11 +397,11 @@ Map<String, dynamic> _$ClashConfigToJson(_ClashConfig instance) =>
       'keep-alive-interval': instance.keepAliveInterval,
       'unified-delay': instance.unifiedDelay,
       'tcp-concurrent': instance.tcpConcurrent,
-      'tun': instance.tun,
-      'dns': instance.dns,
-      'geox-url': instance.geoXUrl,
+      'tun': instance.tun.toJson(),
+      'dns': instance.dns.toJson(),
+      'geox-url': instance.geoXUrl.toJson(),
       'geodata-loader': _$GeodataLoaderEnumMap[instance.geodataLoader]!,
-      'proxy-groups': instance.proxyGroups,
+      'proxy-groups': instance.proxyGroups.map((e) => e.toJson()).toList(),
       'rule': instance.rule,
       'global-ua': instance.globalUa,
       'external-controller':

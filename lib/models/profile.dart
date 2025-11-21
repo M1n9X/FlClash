@@ -44,6 +44,7 @@ abstract class SubscriptionInfo with _$SubscriptionInfo {
 
 @freezed
 abstract class Profile with _$Profile {
+  @JsonSerializable(explicitToJson: true)
   const factory Profile({
     required String id,
     String? label,
@@ -76,6 +77,7 @@ abstract class Profile with _$Profile {
 
 @freezed
 abstract class OverrideData with _$OverrideData {
+  @JsonSerializable(explicitToJson: true)
   const factory OverrideData({
     @Default(false) bool enable,
     @Default(OverrideRule()) OverrideRule rule,
@@ -96,6 +98,7 @@ extension OverrideDataExt on OverrideData {
 
 @freezed
 abstract class OverrideRule with _$OverrideRule {
+  @JsonSerializable(explicitToJson: true)
   const factory OverrideRule({
     @Default(OverrideRuleType.added) OverrideRuleType type,
     @Default([]) List<Rule> overrideRules,

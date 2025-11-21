@@ -59,11 +59,11 @@ Map<String, dynamic> _$ProfileToJson(_Profile instance) => <String, dynamic>{
   'url': instance.url,
   'lastUpdateDate': instance.lastUpdateDate?.toIso8601String(),
   'autoUpdateDuration': instance.autoUpdateDuration.inMicroseconds,
-  'subscriptionInfo': instance.subscriptionInfo,
+  'subscriptionInfo': instance.subscriptionInfo?.toJson(),
   'autoUpdate': instance.autoUpdate,
   'selectedMap': instance.selectedMap,
   'unfoldSet': instance.unfoldSet.toList(),
-  'overrideData': instance.overrideData,
+  'overrideData': instance.overrideData.toJson(),
 };
 
 _OverrideData _$OverrideDataFromJson(Map<String, dynamic> json) =>
@@ -75,7 +75,10 @@ _OverrideData _$OverrideDataFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$OverrideDataToJson(_OverrideData instance) =>
-    <String, dynamic>{'enable': instance.enable, 'rule': instance.rule};
+    <String, dynamic>{
+      'enable': instance.enable,
+      'rule': instance.rule.toJson(),
+    };
 
 _OverrideRule _$OverrideRuleFromJson(Map<String, dynamic> json) =>
     _OverrideRule(
@@ -97,8 +100,8 @@ _OverrideRule _$OverrideRuleFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$OverrideRuleToJson(_OverrideRule instance) =>
     <String, dynamic>{
       'type': _$OverrideRuleTypeEnumMap[instance.type]!,
-      'overrideRules': instance.overrideRules,
-      'addedRules': instance.addedRules,
+      'overrideRules': instance.overrideRules.map((e) => e.toJson()).toList(),
+      'addedRules': instance.addedRules.map((e) => e.toJson()).toList(),
     };
 
 const _$OverrideRuleTypeEnumMap = {
