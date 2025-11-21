@@ -304,27 +304,23 @@ class GlobalState {
 
   Future<void> genConfigFile(ClashConfig pathConfig) async {
     final configFilePath = await appPath.configFilePath;
-    var config = {};
-    try {
-      config = await patchRawConfig(patchConfig: pathConfig);
-    } catch (e) {
-      globalState.showNotifier(e.toString());
-      config = {};
-    }
+    final rawConfigResult = await patchRawConfig(patchConfig: pathConfig);
+
     final res = await Isolate.run<String>(() async {
       try {
-        final res = json.encode(config);
+        final content = json.encode(rawConfigResult);
         final file = File(configFilePath);
         if (!await file.exists()) {
           await file.create(recursive: true);
         }
-        await file.writeAsString(res);
+        await file.writeAsString(content);
         return '';
       } catch (e) {
         return e.toString();
       }
     });
     if (res.isNotEmpty) {
+      globalState.showNotifier(res);
       throw res;
     }
   }
@@ -343,6 +339,7 @@ class GlobalState {
       }
     });
     if (res.isNotEmpty) {
+      globalState.showNotifier(res);
       throw res;
     }
   }
