@@ -25,6 +25,8 @@ class AppController {
   int? lastProfileModified;
   int _trafficSkipTick = 0;
   static const int _trafficSlowInterval = 5;
+  int _runTimeSkipTick = 0;
+  static const int _runTimeSlowInterval = 5;
 
   final BuildContext context;
   final WidgetRef _ref;
@@ -125,6 +127,16 @@ class AppController {
 
   void updateRunTime() {
     final startTime = globalState.startTime;
+    final shouldForcePublish =
+        startTime != null && _ref.read(runTimeProvider) == null;
+
+    if (!_isRunTimeViewActive()) {
+      _runTimeSkipTick += 1;
+      if (!shouldForcePublish && _runTimeSkipTick < _runTimeSlowInterval) {
+        return;
+      }
+    }
+    _runTimeSkipTick = 0;
     if (startTime != null) {
       final startTimeStamp = startTime.millisecondsSinceEpoch;
       final nowTimeStamp = DateTime.now().millisecondsSinceEpoch;
@@ -155,6 +167,11 @@ class AppController {
     final pageLabel = _ref.read(currentPageLabelProvider);
     return pageLabel == PageLabel.dashboard ||
         pageLabel == PageLabel.connections;
+  }
+
+  bool _isRunTimeViewActive() {
+    final pageLabel = _ref.read(currentPageLabelProvider);
+    return pageLabel == PageLabel.dashboard;
   }
 
   Future<void> addProfile(Profile profile) async {
