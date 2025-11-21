@@ -8,14 +8,15 @@ This document tracks concrete steps to reduce startup stalls, main‑isolate jit
 - **Geo seed off-main**: Copy `MMDB/GEOIP/GEOSITE/ASN` assets in an isolate; avoid `flush: true` unless required, and skip write when files already exist.
 
 ## 2) Config / Profile Handling
-- **Isolate config patching**: Run `patchRawConfig` + file write in a worker isolate to avoid UI stalls during profile apply/start.
+- **Isolate config patching**: Run config patching + file write in a worker isolate to avoid UI stalls during profile apply/start. Pre-resolve provider paths on the main isolate, then perform heavy map transforms off-main.
 - **Provider path patching**: Move proxy/rule provider path rewriting into the same isolate while keeping IO on the worker side.
 
 ## 3) Runtime Loops & IPC
 - **Gate traffic/runtime ticks**: Only run 1s updates when relevant UI is visible; consider lower frequency when backgrounded.
 - **Offload heavy parsing**: Decode large connection/proxy lists (`getConnections`) in an isolate.
 - **Throttled IP resolve**: Wrap `NetworkInterface.list` in `Isolate.run`, cache last IP, and avoid frequent recompute on connectivity changes.
-- **Gate polling**: Run traffic/runtime updates at 1s only when relevant views are active and the app is foreground; otherwise degrade to slower cadence to reduce IPC and rebuilds.
+- **Gate polling**: Run traffic/runtime updates at 1s only when relevant views are active and the app is foreground; otherwise degrade to slower cadence to reduce IPC and rebuilds. Pause timers when app is backgrounded and resume when foregrounded.
+- **Connectivity refresh**: Force local IP refresh on connectivity changes while keeping isolate offload + short cache window.
 - **Trim `checkIp` fan-out**: Limit to a prioritized subset of endpoints, short timeouts, and debounce invocations; cache success briefly.
 
 ## 4) Verification
