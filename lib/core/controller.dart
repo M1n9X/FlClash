@@ -44,15 +44,21 @@ class CoreController {
     }
     const geoFileNameList = [MMDB, GEOIP, GEOSITE, ASN];
     try {
-      for (final geoFileName in geoFileNameList) {
-        final geoFile = File(join(homePath, geoFileName));
-        final isExists = await geoFile.exists();
-        if (isExists) {
+      for (final geoFilePath
+          in geoFileNameList.map((name) => join(homePath, name))) {
+        final geoFile = File(geoFilePath);
+        if (await geoFile.exists()) {
           continue;
         }
-        final data = await rootBundle.load('assets/data/$geoFileName');
-        List<int> bytes = data.buffer.asUint8List();
-        await geoFile.writeAsBytes(bytes, flush: true);
+        final data = await rootBundle.load('assets/data/${basename(geoFilePath)}');
+        final bytes = data.buffer.asUint8List();
+        await Isolate.run(() async {
+          final file = File(geoFilePath);
+          if (!await file.exists()) {
+            await file.create(recursive: true);
+          }
+          await file.writeAsBytes(bytes);
+        });
       }
     } catch (e) {
       exit(0);
@@ -147,9 +153,14 @@ class CoreController {
 
   Future<List<TrackerInfo>> getConnections() async {
     final res = await _interface.getConnections();
-    final connectionsData = json.decode(res) as Map;
-    final connectionsRaw = connectionsData['connections'] as List? ?? [];
-    return connectionsRaw.map((e) => TrackerInfo.fromJson(e)).toList();
+    if (res.isEmpty) {
+      return [];
+    }
+    return Isolate.run<List<TrackerInfo>>(() {
+      final connectionsData = json.decode(res) as Map;
+      final connectionsRaw = connectionsData['connections'] as List? ?? [];
+      return connectionsRaw.map((e) => TrackerInfo.fromJson(e)).toList();
+    });
   }
 
   void closeConnection(String id) {

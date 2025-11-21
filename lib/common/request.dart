@@ -11,14 +11,35 @@ import 'package:fl_clash/state.dart';
 import 'package:flutter/cupertino.dart';
 
 class Request {
-  late final Dio dio;
-  late final Dio _clashDio;
+  static Request? _instance;
+
+  Request._internal();
+
+  factory Request() => instance;
+
+  static Request get instance {
+    _instance ??= Request._internal();
+    return _instance!;
+  }
+
+  late final Dio dio = _createDio();
+  late final Dio _clashDio = _createClashDio();
+  static const int _ipSourcesLimit = 4;
+  final Duration _ipCacheDuration = const Duration(minutes: 1);
+  Result<IpInfo?>? _cachedIpResult;
+  DateTime? _cachedIpFetchedAt;
+  Completer<Result<IpInfo?>>? _checkingIp;
+  CancelToken? _checkingIpCancelToken;
+  final List<CancelToken> _checkIpCallerCancelTokens = [];
   String? userAgent;
 
-  Request() {
-    dio = Dio(BaseOptions(headers: {'User-Agent': browserUa}));
-    _clashDio = Dio();
-    _clashDio.httpClientAdapter = IOHttpClientAdapter(
+  Dio _createDio() {
+    return Dio(BaseOptions(headers: {'User-Agent': browserUa}));
+  }
+
+  Dio _createClashDio() {
+    final dio = Dio();
+    dio.httpClientAdapter = IOHttpClientAdapter(
       createHttpClient: () {
         final client = HttpClient();
         client.findProxy = (Uri uri) {
@@ -28,6 +49,7 @@ class Request {
         return client;
       },
     );
+    return dio;
   }
 
   Future<Response> getFileResponseForUrl(String url) async {
@@ -82,44 +104,114 @@ class Request {
     'https://ipinfo.io/json': IpInfo.fromIpInfoIoJson,
   };
 
+  void _cancelOngoingCheckIp([String reason = 'cancelled']) {
+    if (_checkingIpCancelToken != null &&
+        !_checkingIpCancelToken!.isCancelled) {
+      _checkingIpCancelToken!.cancel(reason);
+    }
+  }
+
+  void _trackCheckIpCancelToken(CancelToken? cancelToken) {
+    if (cancelToken == null) return;
+    _checkIpCallerCancelTokens.add(cancelToken);
+    if (cancelToken.isCancelled) {
+      _cancelOngoingCheckIp();
+      return;
+    }
+    cancelToken.whenCancel.then((_) => _cancelOngoingCheckIp());
+  }
+
+  void _clearCheckingIpState() {
+    _cancelOngoingCheckIp();
+    for (final token in _checkIpCallerCancelTokens) {
+      if (!token.isCancelled) {
+        token.cancel();
+      }
+    }
+    _checkIpCallerCancelTokens.clear();
+    _checkingIpCancelToken = null;
+    _checkingIp = null;
+  }
+
   Future<Result<IpInfo?>> checkIp({CancelToken? cancelToken}) async {
-    var failureCount = 0;
-    final futures = _ipInfoSources.entries.map((source) async {
-      final Completer<Result<IpInfo?>> completer = Completer();
-      handleFailRes() {
-        if (!completer.isCompleted && failureCount == _ipInfoSources.length) {
-          completer.complete(Result.success(null));
+    final now = DateTime.now();
+    if (_cachedIpResult != null &&
+        _cachedIpResult!.isSuccess &&
+        _cachedIpFetchedAt != null &&
+        now.difference(_cachedIpFetchedAt!) < _ipCacheDuration) {
+      return _cachedIpResult!;
+    }
+
+    if (_checkingIp != null && !_checkingIp!.isCompleted) {
+      _trackCheckIpCancelToken(cancelToken);
+      return _checkingIp!.future;
+    }
+
+    final completer = Completer<Result<IpInfo?>>();
+    _checkingIp = completer;
+    _checkingIpCancelToken = CancelToken();
+    _trackCheckIpCancelToken(cancelToken);
+
+    final sources = _ipInfoSources.entries.take(_ipSourcesLimit).toList();
+    if (sources.isEmpty) {
+      final fallback = Result.success(null);
+      _cacheIpResult(fallback);
+      completer.complete(fallback);
+    }
+
+    if (sources.isNotEmpty) {
+      var pending = sources.length;
+
+      void handleFail() {
+        pending -= 1;
+        if (pending == 0 && !completer.isCompleted) {
+          final fallback = Result.success(null);
+          _cacheIpResult(fallback);
+          completer.complete(fallback);
         }
       }
 
-      final future = dio
-          .get<Map<String, dynamic>>(
-            source.key,
-            cancelToken: cancelToken,
-            options: Options(responseType: ResponseType.json),
-          )
-          .timeout(const Duration(seconds: 10));
-      future
-          .then((res) {
-            if (res.statusCode == HttpStatus.ok && res.data != null) {
-              completer.complete(Result.success(source.value(res.data!)));
-              return;
-            }
-            failureCount++;
-            handleFailRes();
-          })
-          .catchError((e) {
-            failureCount++;
-            if (e is DioException && e.type == DioExceptionType.cancel) {
-              completer.complete(Result.error('cancelled'));
-            }
-            handleFailRes();
-          });
-      return completer.future;
-    });
-    final res = await Future.any(futures);
-    cancelToken?.cancel();
-    return res;
+      for (final source in sources) {
+        dio
+            .get<Map<String, dynamic>>(
+              source.key,
+              cancelToken: _checkingIpCancelToken,
+              options: Options(responseType: ResponseType.json),
+            )
+            .timeout(const Duration(seconds: 8))
+            .then((res) {
+              if (completer.isCompleted) return;
+              if (res.statusCode == HttpStatus.ok && res.data != null) {
+                final result = Result.success(source.value(res.data!));
+                _cacheIpResult(result);
+                completer.complete(result);
+                return;
+              }
+              handleFail();
+            })
+            .catchError((e) {
+              if (completer.isCompleted) return;
+              if (e is DioException && e.type == DioExceptionType.cancel) {
+                completer.complete(Result.error('cancelled'));
+                return;
+              }
+              handleFail();
+            });
+      }
+    }
+
+    try {
+      return await completer.future;
+    } finally {
+      _clearCheckingIpState();
+    }
+  }
+
+  void _cacheIpResult(Result<IpInfo?> result) {
+    if (result.isSuccess && result.data != null) {
+      _cachedIpResult = result;
+      _cachedIpFetchedAt = DateTime.now();
+    }
   }
 
   Future<bool> pingHelper() async {
@@ -177,4 +269,4 @@ class Request {
   }
 }
 
-final request = Request();
+Request get request => Request.instance;

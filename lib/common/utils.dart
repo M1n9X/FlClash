@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
 import 'dart:ui';
 
@@ -10,6 +11,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class Utils {
+  final Duration _localIpCacheDuration = const Duration(seconds: 30);
+  String? _cachedLocalIp;
+  DateTime? _localIpCachedAt;
+
   Color? getDelayColor(int? delay) {
     if (delay == null) return null;
     if (delay < 0) return Colors.red;
@@ -292,29 +297,42 @@ class Utils {
     return '${appName}_${DateTime.now().show}.log';
   }
 
-  Future<String?> getLocalIpAddress() async {
-    List<NetworkInterface> interfaces =
-        await NetworkInterface.list(includeLoopback: false)
-          ..sort((a, b) {
-            if (a.isWifi && !b.isWifi) return -1;
-            if (!a.isWifi && b.isWifi) return 1;
-            if (a.includesIPv4 && !b.includesIPv4) return -1;
-            if (!a.includesIPv4 && b.includesIPv4) return 1;
-            return 0;
-          });
-    for (final interface in interfaces) {
-      final addresses = interface.addresses;
-      if (addresses.isEmpty) {
-        continue;
-      }
-      addresses.sort((a, b) {
-        if (a.isIPv4 && !b.isIPv4) return -1;
-        if (!a.isIPv4 && b.isIPv4) return 1;
-        return 0;
-      });
-      return addresses.first.address;
+  Future<String?> getLocalIpAddress({bool forceRefresh = false}) async {
+    final now = DateTime.now();
+    if (!forceRefresh &&
+        _cachedLocalIp != null &&
+        _localIpCachedAt != null &&
+        now.difference(_localIpCachedAt!) < _localIpCacheDuration) {
+      return _cachedLocalIp;
     }
-    return '';
+
+    final result = await Isolate.run<String?>(() async {
+      final interfaces = await NetworkInterface.list(includeLoopback: false)
+        ..sort((a, b) {
+          if (a.isWifi && !b.isWifi) return -1;
+          if (!a.isWifi && b.isWifi) return 1;
+          if (a.includesIPv4 && !b.includesIPv4) return -1;
+          if (!a.includesIPv4 && b.includesIPv4) return 1;
+          return 0;
+        });
+      for (final interface in interfaces) {
+        final addresses = interface.addresses;
+        if (addresses.isEmpty) {
+          continue;
+        }
+        addresses.sort((a, b) {
+          if (a.isIPv4 && !b.isIPv4) return -1;
+          if (!a.isIPv4 && b.isIPv4) return 1;
+          return 0;
+        });
+        return addresses.first.address;
+      }
+      return '';
+    });
+
+    _cachedLocalIp = result;
+    _localIpCachedAt = DateTime.now();
+    return result;
   }
 
   SingleActivator controlSingleActivator(LogicalKeyboardKey trigger) {
