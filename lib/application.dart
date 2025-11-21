@@ -85,6 +85,7 @@ class ApplicationState extends ConsumerState<Application> {
             if (!results.contains(ConnectivityResult.vpn)) {
               coreController.closeConnections();
             }
+            request.invalidateIpCache(cancelOngoing: true);
             globalState.appController.updateLocalIp();
             globalState.appController.addCheckIpNumDebounce();
           },

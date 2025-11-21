@@ -30,7 +30,6 @@ class Request {
   DateTime? _cachedIpFetchedAt;
   Completer<Result<IpInfo?>>? _checkingIp;
   CancelToken? _checkingIpCancelToken;
-  final List<CancelToken> _checkIpCallerCancelTokens = [];
   String? userAgent;
 
   Dio _createDio() {
@@ -104,53 +103,44 @@ class Request {
     'https://ipinfo.io/json': IpInfo.fromIpInfoIoJson,
   };
 
-  void _cancelOngoingCheckIp([String reason = 'cancelled']) {
-    if (_checkingIpCancelToken != null &&
+  /// Clear IP cache and optionally cancel the ongoing shared request.
+  void invalidateIpCache({bool cancelOngoing = true}) {
+    _cachedIpResult = null;
+    _cachedIpFetchedAt = null;
+    if (cancelOngoing &&
+        _checkingIpCancelToken != null &&
         !_checkingIpCancelToken!.isCancelled) {
-      _checkingIpCancelToken!.cancel(reason);
+      _checkingIpCancelToken!.cancel('invalidate');
     }
   }
 
-  void _trackCheckIpCancelToken(CancelToken? cancelToken) {
-    if (cancelToken == null) return;
-    _checkIpCallerCancelTokens.add(cancelToken);
-    if (cancelToken.isCancelled) {
-      _cancelOngoingCheckIp();
-      return;
+  Future<Result<IpInfo?>> checkIp({
+    CancelToken? cancelToken,
+    bool forceRefresh = false,
+  }) async {
+    if (cancelToken?.isCancelled == true) {
+      return Result.error('cancelled');
     }
-    cancelToken.whenCancel.then((_) => _cancelOngoingCheckIp());
-  }
 
-  void _clearCheckingIpState() {
-    _cancelOngoingCheckIp();
-    for (final token in _checkIpCallerCancelTokens) {
-      if (!token.isCancelled) {
-        token.cancel();
-      }
-    }
-    _checkIpCallerCancelTokens.clear();
-    _checkingIpCancelToken = null;
-    _checkingIp = null;
-  }
-
-  Future<Result<IpInfo?>> checkIp({CancelToken? cancelToken}) async {
     final now = DateTime.now();
-    if (_cachedIpResult != null &&
+    if (!forceRefresh &&
+        _cachedIpResult != null &&
         _cachedIpResult!.isSuccess &&
         _cachedIpFetchedAt != null &&
         now.difference(_cachedIpFetchedAt!) < _ipCacheDuration) {
       return _cachedIpResult!;
     }
 
-    if (_checkingIp != null && !_checkingIp!.isCompleted) {
-      _trackCheckIpCancelToken(cancelToken);
-      return _checkingIp!.future;
+    if (!forceRefresh &&
+        _checkingIp != null &&
+        !_checkingIp!.isCompleted &&
+        _checkingIpCancelToken?.isCancelled != true) {
+      return _waitWithCallerCancel(_checkingIp!.future, cancelToken);
     }
 
     final completer = Completer<Result<IpInfo?>>();
     _checkingIp = completer;
     _checkingIpCancelToken = CancelToken();
-    _trackCheckIpCancelToken(cancelToken);
 
     final sources = _ipInfoSources.entries.take(_ipSourcesLimit).toList();
     if (sources.isEmpty) {
@@ -201,9 +191,12 @@ class Request {
     }
 
     try {
-      return await completer.future;
+          return await completer.future;
+    } on Exception catch (e) {
+      return Result.error(e.toString());
     } finally {
-      _clearCheckingIpState();
+      _checkingIp = null;
+      _checkingIpCancelToken = null;
     }
   }
 
@@ -212,6 +205,22 @@ class Request {
       _cachedIpResult = result;
       _cachedIpFetchedAt = DateTime.now();
     }
+  }
+
+  Future<Result<IpInfo?>> _waitWithCallerCancel(
+    Future<Result<IpInfo?>> future,
+    CancelToken? cancelToken,
+  ) {
+    if (cancelToken == null) {
+      return future;
+    }
+    if (cancelToken.isCancelled) {
+      return Future.value(Result.error('cancelled'));
+    }
+    return Future.any([
+      future,
+      cancelToken.whenCancel.then((_) => Result.error('cancelled')),
+    ]);
   }
 
   Future<bool> pingHelper() async {
