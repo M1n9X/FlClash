@@ -15,9 +15,9 @@ This document tracks concrete steps to reduce startup stalls, main‑isolate jit
 - **Gate traffic/runtime ticks**: Only run 1s updates when relevant UI is visible; consider lower frequency when backgrounded.
 - **Offload heavy parsing**: Decode large connection/proxy lists (`getConnections`) in an isolate.
 - **Throttled IP resolve**: Wrap `NetworkInterface.list` in `Isolate.run`, cache last IP, and avoid frequent recompute on connectivity changes.
+- **Gate polling**: Run traffic/runtime updates at 1s only when relevant views are active; otherwise degrade to slower cadence to reduce IPC and rebuilds.
 - **Trim `checkIp` fan-out**: Limit to a prioritized subset of endpoints, short timeouts, and debounce invocations; cache success briefly.
 
 ## 4) Verification
 - Measure time-to-first-frame and frame build times in profile mode before/after changes.
 - Smoke test: profile switch, start/stop core, connectivity change, check IP, export/backup flows.
-

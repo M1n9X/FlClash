@@ -23,6 +23,8 @@ import 'models/models.dart';
 
 class AppController {
   int? lastProfileModified;
+  int _trafficSkipTick = 0;
+  static const int _trafficSlowInterval = 5;
 
   final BuildContext context;
   final WidgetRef _ref;
@@ -133,6 +135,13 @@ class AppController {
   }
 
   Future<void> updateTraffic() async {
+    if (!_isTrafficViewActive()) {
+      _trafficSkipTick += 1;
+      if (_trafficSkipTick < _trafficSlowInterval) {
+        return;
+      }
+    }
+    _trafficSkipTick = 0;
     final onlyStatisticsProxy = _ref.read(
       appSettingProvider.select((state) => state.onlyStatisticsProxy),
     );
@@ -140,6 +149,12 @@ class AppController {
     _ref.read(trafficsProvider.notifier).addTraffic(traffic);
     _ref.read(totalTrafficProvider.notifier).value = await coreController
         .getTotalTraffic(onlyStatisticsProxy);
+  }
+
+  bool _isTrafficViewActive() {
+    final pageLabel = _ref.read(currentPageLabelProvider);
+    return pageLabel == PageLabel.dashboard ||
+        pageLabel == PageLabel.connections;
   }
 
   Future<void> addProfile(Profile profile) async {
